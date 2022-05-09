@@ -81,14 +81,6 @@ class Predictor(cog.BasePredictor):
     def predict(self, 
 """
 
-DEFAULT_CONTEXT = f"""
-{SHEBANG}
-{EXAMPLE_OF_COG_STYLE_PROGRAM}
-# Previous code, run manually with `python sample.py ...`
-{ARGPARSE_CODE_TO_CONVERT_COMMENTED_OUT}
-{COG_PROMPT}
-"""
-
 class Predictor(BasePredictor):
     @inference_mode()
     def setup(self):
@@ -115,9 +107,9 @@ class Predictor(BasePredictor):
     @inference_mode()
     def predict(
         self,
-        context: str = Input(
+        code_to_convert: str = Input(
             description="Some starting python code. CodeGen will try to complete the code provided, up to the max_length.",
-            default=DEFAULT_CONTEXT,
+            default=ARGPARSE_CODE_TO_CONVERT,
         ),
         rng_seed: int = Input(description="Random number generator seed", default=0),
         rng_deterministic: bool = Input(description="Deterministic RNG", default=True),
@@ -132,6 +124,9 @@ class Predictor(BasePredictor):
         ),
     ) -> cog.Path:
         """Run a single prediction on the model"""
+        code_to_convert_commented_out = ["# " + line for line in code_to_convert.split("\n")]
+        prompt_engineered_for_task = f"{SHEBANG}\n{EXAMPLE_OF_COG_STYLE_PROGRAM}\n# Previous code, run manually with `python sample.py ...`\n{code_to_convert_commented_out}\n{COG_PROMPT}"
+
         set_env()
         set_seed(rng_seed, deterministic=rng_deterministic)
         with print_time("sampling"):
@@ -139,7 +134,7 @@ class Predictor(BasePredictor):
                 device=self.device,
                 model=self.model,
                 tokenizer=self.tokenizer,
-                context=context,
+                context=prompt_engineered_for_task,
                 pad_token_id=self.pad,
                 num_return_sequences=1,
                 temp=temperature,
@@ -153,4 +148,4 @@ class Predictor(BasePredictor):
         formatted_output = f"# Prediction\n\n```python\n{COG_PROMPT}{truncation}\n```\n"
         with open(tempfile.mktemp(suffix=".md"), "w") as f:
             f.write(formatted_output)
-        return cog.Path("prediction.md")
+        return cog.Path(f.name)
