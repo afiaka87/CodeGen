@@ -17,7 +17,7 @@ DEFAULT_CONTEXT = "# approximate pi using the monte carlo method \ndef calculate
 class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
-        self.model_name = "codegen-2B-mono"
+        self.model_name = "codegen-6B-mono"
         ckpt = f"./checkpoints/{self.model_name}"
         assert os.path.isdir(ckpt), f"Model directory {ckpt} does not exist"
 
@@ -46,7 +46,7 @@ class Predictor(BasePredictor):
             description="Some starting python code. CodeGen will try to complete the code provided, up to the max_length.",
             default=DEFAULT_CONTEXT,
         ),
-        rng_seed: int = Input(description="Random number generator seed", default=0),
+        rng_seed: int = Input(description="Random number generator seed", default=0, ge=-1, le=2147483647),
         rng_deterministic: bool = Input(description="Deterministic RNG", default=True),
         top_p: float = Input(
             description="Top-p sampling probability.", ge=0, le=1, default=0.95
@@ -60,6 +60,13 @@ class Predictor(BasePredictor):
     ) -> cog.Path:
         """Run a single prediction on the model"""
         set_env()
+
+        import random
+        if rng_seed != -1:
+            rng_seed = int(rng_seed)
+        else:
+            rng_seed = random.randint(0, 2147483647)
+        print(f"rng_seed: {rng_seed}")
         set_seed(rng_seed, deterministic=rng_deterministic)
 
         with print_time("sampling"):
@@ -78,7 +85,7 @@ class Predictor(BasePredictor):
 
         # cog handles markdown files with the `.md` extension, 
         # so we need to write the output to a file inside after wrapping in a md code block.
-        out_path = cog.Path(tempfile.mkdtemp()) / "codegen_prediction.md"
+        out_path = cog.Path(os.path.join(tempfile.mkdtemp()), "codegen_prediction.md")
         output_as_markdown = f"```python\n{context}{truncation}\n```"
         with open(out_path, "w") as f:
             f.write(output_as_markdown)
