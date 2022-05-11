@@ -24,7 +24,7 @@ build:
 
   run: 
     # run a huggingface import via python, so it is guaranteed to be in the image rather than downloaded at runtime.
-    - python3.8 -m pip install transformers && python3.8 -c 'from transformers import GPT2TokenizerFast; t = GPT2TokenizerFast.from_pretrained("gpt2"); print(t.vocab_size)'
+    - python3 -c 'from transformers import GPT2TokenizerFast; t = GPT2TokenizerFast.from_pretrained("gpt2"); print(t.vocab_size)'
 
 
 # predict.py defines how predictions are run on your model
